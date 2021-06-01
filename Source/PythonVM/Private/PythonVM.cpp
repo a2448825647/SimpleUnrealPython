@@ -10,6 +10,7 @@ DEFINE_LOG_CATEGORY(LogPythonVM);
 
 void FPythonVMModule::StartupModule()
 {
+	
 }
 
 void FPythonVMModule::ShutdownModule()

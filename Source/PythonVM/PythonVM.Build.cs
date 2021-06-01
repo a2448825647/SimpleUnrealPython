@@ -7,7 +7,8 @@ public class PythonVM : ModuleRules
 	public PythonVM(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-		
+		RuntimeDependencies.Add("$(ProjectDir)/Plugins/PythonVM/Source/Scripts/...");
+		RuntimeDependencies.Add("$(ProjectDir)/Plugins/PythonVM/Source/ThirdParty/...");
 		PublicIncludePaths.AddRange(
 			new string[] {
 				"$(ModuleDir)/../ThirdParty/Python/include",
@@ -24,14 +25,9 @@ public class PythonVM : ModuleRules
 			}
 			);
 
-		PublicLibraryPaths.AddRange(
-			new string[] {
-				"$(ModuleDir)/../ThirdParty/Python/libs"
-			}
-			);
 		PublicAdditionalLibraries.AddRange(
 			new string[] {
-				"python39.lib"
+				"$(ModuleDir)/../ThirdParty/Python/libs/python39.lib"
 			}
 			);
 		

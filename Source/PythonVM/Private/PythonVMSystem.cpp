@@ -28,17 +28,19 @@ void UPythonVMSystem::InitializePython() {
 #if WITH_EDITOR
 	}{
 #endif
+		FString AbsPluginDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectPluginsDir());
+		GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, "ProjectPluginDir:" + FPaths::ConvertRelativePathToFull( FPaths::ProjectPluginsDir()));
 		FString ExecScript = "import sys";
 		ExecScript.Append(LINE_TERMINATOR);
 		ExecScript.Append("sys.path.append('");
-		ExecScript.Append(FPaths::ProjectPluginsDir() / "PythonVM/Source/Scripts");
+		ExecScript.Append(AbsPluginDir / "PythonVM/Source/Scripts");
 		ExecScript.Append("')");
 		PyRun_SimpleString(TCHAR_TO_UTF8(*ExecScript));
 
 		mPyArgs = Py_BuildValue("");
 
 		CallFunction("log_catch::redirectLog");
-		CallStringFunctionWithStringParam("enviroment_path::initEnviroment",FPaths::ProjectPluginsDir());
+		CallStringFunctionWithStringParam("enviroment_path::initEnviroment", AbsPluginDir);
 		CallFunction("enviroment_path::initOther");
 	}
 }
