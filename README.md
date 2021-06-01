@@ -2,7 +2,7 @@
 引擎版本：UE4.26
 接入的Python版本为Python3.9
 
-简易运行时Python调用的插件，未测试打包
+简易运行时Python调用的插件，打包测试成功
 
 配置方法：
 Source/Scripts/enviroment_path.py 内配置额外的python环境变量路径
