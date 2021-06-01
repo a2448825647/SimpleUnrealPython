@@ -48,8 +48,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "PythonVM")
 	FString CallStringFunction(FString FunctionName);
 
-	PyObject* GetOrLoadModule(FString ModuleName, bool PrintLog = true);
-	PyObject* GetOrLoadFunction(FString FunctionName, bool PrintLog = true);
+	PyObject* GetOrLoadModule(FString ModuleName);
+	PyObject* GetOrLoadFunction(FString FunctionName);
 	PyObject* CallFunction(FString FunctionName, PyObject* Args = nullptr, PyObject* Kwargs = nullptr);
 	const PyObject* GetEmptyArgs();
 	FString PyObjectToString(PyObject* Object);
