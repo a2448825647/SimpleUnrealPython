@@ -6,6 +6,7 @@
 //#include "Interfaces/IPluginManager.h"
 
 #define LOCTEXT_NAMESPACE "FPythonVMModule"
+DEFINE_LOG_CATEGORY(LogPythonVM);
 
 void FPythonVMModule::StartupModule()
 {

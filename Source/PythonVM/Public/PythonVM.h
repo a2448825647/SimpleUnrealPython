@@ -4,6 +4,8 @@
 
 #include "Modules/ModuleManager.h"
 
+DECLARE_LOG_CATEGORY_EXTERN(LogPythonVM, Log, All);
+
 class FPythonVMModule : public IModuleInterface
 {
 public:
