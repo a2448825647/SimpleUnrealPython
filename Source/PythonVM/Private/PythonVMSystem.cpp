@@ -4,6 +4,7 @@
 #include "PythonVMSystem.h"
 #include <string>
 #include "PythonVm.h"
+#include "Projects/Public/Interfaces/IPluginManager.h"
 
 
 
@@ -28,12 +29,12 @@ void UPythonVMSystem::InitializePython() {
 #if WITH_EDITOR
 	}{
 #endif
-		FString AbsPluginDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectPluginsDir());
-		GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, "ProjectPluginDir:" + FPaths::ConvertRelativePathToFull( FPaths::ProjectPluginsDir()));
+		FString AbsPluginDir = FPaths::ConvertRelativePathToFull(IPluginManager::Get().FindPlugin(TEXT("PythonVM"))->GetBaseDir()+"/");
+		//GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, "ProjectPluginDir:" + FPaths::ConvertRelativePathToFull( FPaths::ProjectPluginsDir()));
 		FString ExecScript = "import sys";
 		ExecScript.Append(LINE_TERMINATOR);
 		ExecScript.Append("sys.path.append('");
-		ExecScript.Append(AbsPluginDir / "PythonVM/Source/Scripts");
+		ExecScript.Append(AbsPluginDir / "Source/Scripts");
 		ExecScript.Append("')");
 		PyRun_SimpleString(TCHAR_TO_UTF8(*ExecScript));
 
@@ -181,7 +182,7 @@ void UPythonVMSystem::PrintPythonLog() {
 			FString LogStr = PyObjectToString(Result);
 			if (!LogStr.IsEmpty()) {
 				UE_LOG(LogPythonVM, Display, TEXT("PythonLevel:\n%s"), *LogStr);
-				GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, LogStr);
+				//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, LogStr);
 				PyObject_Call(ClearLogPtr, mPyArgs, nullptr);
 			}
 			SAFE_DELETE_PYOBJECT(Result);
@@ -204,12 +205,12 @@ bool UPythonVMSystem::ImportPythonModuleImpl(FString ModuleName) {
 			FPyModule NewModule;
 			NewModule.Module = mPyModule;
 			UE_LOG(LogPythonVM, Display, TEXT("Import python module: %s"),*ModuleName);
-			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, "Import python module:" + ModuleName);
+			//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, "Import python module:" + ModuleName);
 			Modules.Add(ModuleName, NewModule);
 			return true;
 		}
 		UE_LOG(LogPythonVM, Error, TEXT("Import python module failed: %s"), *ModuleName);
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, "Import python module failed:" + ModuleName);
+		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, "Import python module failed:" + ModuleName);
 		return false;
 	}
 	return true;
