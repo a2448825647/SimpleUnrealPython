@@ -13,12 +13,24 @@ Py_DECREF((Obj));\
 (Obj) = nullptr; }
 
 /**
- * 
+ *
  */
-
-struct FPyModule {
-	PyObject* Module;
-	TMap<FString, PyObject*> Functions; // Key:FunctionName  Value:FunctionInstance
+class UPyObject {
+public:
+	UPyObject() :Object(nullptr) {};
+	UPyObject(PyObject* InObj):Object(InObj) {}
+	~UPyObject() { SAFE_DELETE_PYOBJECT(Object); }
+	PyObject* Get() { return Object; }
+	void Set(PyObject* InObj) {
+		SAFE_DELETE_PYOBJECT(Object);
+		Object = InObj;
+	}
+	bool IsValid() { return Object != nullptr; };
+private:
+	UPyObject(const UPyObject&) = delete;
+	UPyObject& operator= (UPyObject&) = delete;
+private:
+	PyObject* Object;
 };
 
 UCLASS()
@@ -34,32 +46,28 @@ public:
 	virtual void Deinitialize();
 
 	UFUNCTION(BlueprintCallable, Category = "PythonVM")
-	void RecreatePythonEnvironment();
-	UFUNCTION(BlueprintCallable, Category = "PythonVM")
-	void RunPythonString(const FString& Str);
-	UFUNCTION(BlueprintCallable, Category = "PythonVM")
-	void RunPythonFile(const FString& ModuleName);
-	UFUNCTION(BlueprintCallable, Category = "PythonVM")
-	bool ImportPythonModule(FString ModuleName);
-	UFUNCTION(BlueprintCallable, Category = "PythonVM")
-	void CallEmptyFunction(FString FunctionName);
-	UFUNCTION(BlueprintCallable, Category = "PythonVM")
-	FString CallStringFunctionWithStringParam(FString FunctionName, FString Param);
-	UFUNCTION(BlueprintCallable, Category = "PythonVM")
-	FString CallStringFunction(FString FunctionName);
+		void InitializePython();
 
-	PyObject* GetOrLoadModule(FString ModuleName);
-	PyObject* GetOrLoadFunction(FString FunctionName);
-	PyObject* CallFunction(FString FunctionName, PyObject* Args = nullptr, PyObject* Kwargs = nullptr);
-	const PyObject* GetEmptyArgs();
+	UFUNCTION(BlueprintCallable, Category = "PythonVM")
+		void FinalizePython();
+
+	UFUNCTION(BlueprintCallable, Category = "PythonVM")
+		void RunPythonString(const FString& Str);
+
+	UFUNCTION(BlueprintCallable, Category = "PythonVM")
+		FString SimpleCallFunction(FString ModuleName, FString FunctionName, FString Param);
+
+	UFUNCTION(BlueprintCallable, Category = "PythonVM")
+		void SimpleCallFunctionAsync(FString ModuleName, FString FunctionName, FString Param);
+
 	FString PyObjectToString(PyObject* Object);
 private:
-	bool ImportPythonModuleImpl(FString ModuleName);
-	void InitializePython();
-	void FinalizePython();
-	void PrintPythonLog();
-	inline bool SplitFunctionName(FString In, FString& OutModuleName, FString& OutFunctionName);
+	bool ImportPythonModule(FString ModuleName);
 
-	TMap<FString, FPyModule> Modules; // Key: ModuleName  Value:ModuleStruct
+	UPyObject* GetOrImportPyModule(FString ModuleName);
+
+private:
+	TMap<FString, UPyObject*> Modules; // Key: ModuleName  Value:ModuleStruct
 };
+
 

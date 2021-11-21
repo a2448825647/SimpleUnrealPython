@@ -5,160 +5,84 @@
 #include <string>
 #include "PythonVm.h"
 #include "Projects/Public/Interfaces/IPluginManager.h"
+#include "PyModule_uelog.h"
 
 
-
-PyObject* mPyModule_log_catch = nullptr;
-PyObject* mPyFunction_getLog = nullptr;
-PyObject* mPyFunction_clearLog = nullptr;
-PyObject* mPyArgs = nullptr;
 
 void UPythonVMSystem::Initialize(FSubsystemCollectionBase& Collection) {
-	InitializePython();
+	//InitializePython();
 	Super::Initialize(Collection);
 }
 
 void UPythonVMSystem::Deinitialize() {
-	FinalizePython();
+	//FinalizePython();
 	Super::Deinitialize();
 }
 
 void UPythonVMSystem::InitializePython() {
 	if (!Py_IsInitialized()) {
+		PyImport_AppendInittab("uelog", PyInit_uelog);
 		Py_Initialize();
-#if WITH_EDITOR
-	}{
-#endif
-		FString AbsPluginDir = FPaths::ConvertRelativePathToFull(IPluginManager::Get().FindPlugin(TEXT("PythonVM"))->GetBaseDir()+"/");
-		//GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, "ProjectPluginDir:" + FPaths::ConvertRelativePathToFull( FPaths::ProjectPluginsDir()));
+		FString AbsPluginDir = FPaths::ConvertRelativePathToFull(IPluginManager::Get().FindPlugin(TEXT("PythonVM"))->GetBaseDir() + "/");
 		FString ExecScript = "import sys";
 		ExecScript.Append(LINE_TERMINATOR);
 		ExecScript.Append("sys.path.append('");
 		ExecScript.Append(AbsPluginDir / "Source/Scripts");
 		ExecScript.Append("')");
 		PyRun_SimpleString(TCHAR_TO_UTF8(*ExecScript));
-
-		mPyArgs = Py_BuildValue("");
-
-		CallFunction("log_catch::redirectLog");
-		CallStringFunctionWithStringParam("enviroment_path::initEnviroment", AbsPluginDir);
-		CallFunction("enviroment_path::initOther");
+		PyRun_SimpleString("import log_catch");
+		PyRun_SimpleString("log_catch.redirectLog()");
+		SimpleCallFunction("enviroment_path", "initEnviroment", AbsPluginDir);
 	}
 }
 
 void UPythonVMSystem::FinalizePython() {
-	if (Py_IsInitialized()) {
-		SAFE_DELETE_PYOBJECT(mPyModule_log_catch);
-		SAFE_DELETE_PYOBJECT(mPyFunction_getLog);
-		SAFE_DELETE_PYOBJECT(mPyFunction_clearLog);
-		SAFE_DELETE_PYOBJECT(mPyArgs);
-		TArray<FPyModule> ValueAry;
-		for (auto& Ite : Modules) {
-			for (auto& Ite2 : Ite.Value.Functions) {
-				SAFE_DELETE_PYOBJECT(Ite2.Value);
-			}
-			SAFE_DELETE_PYOBJECT(Ite.Value.Module);
-		}
-		Modules.Empty();
 #if !WITH_EDITOR
+	if (Py_IsInitialized()) {
+		SAFE_DELETE_PYOBJECT(gPyEmptyArgs);
 		Py_Finalize();
-#endif
 	}
-}
-
-void UPythonVMSystem::RecreatePythonEnvironment() {
-	FinalizePython();
-	InitializePython();
+#endif
 }
 
 void UPythonVMSystem::RunPythonString(const FString& Str) {
 	if (Str.IsEmpty()) return;
-	//PyRun_SimpleString(std::string(TCHAR_TO_UTF8(*Str)).c_str());
-	PyRun_SimpleString(TCHAR_TO_UTF8(*Str));
-	PrintPythonLog();
-}
-
-void UPythonVMSystem::RunPythonFile(const FString& ModuleName) {
-	//FString CallString = ModuleName + "::__main__";
-	//CallFunction(CallString);
-}
-
-bool UPythonVMSystem::ImportPythonModule(FString ModuleName) {
-	bool Ret = ImportPythonModuleImpl(ModuleName);
-	PrintPythonLog();
-	return Ret;
-}
-
-void UPythonVMSystem::CallEmptyFunction(FString FunctionName) {
-	CallFunction(FunctionName);
-}
-
-FString UPythonVMSystem::CallStringFunctionWithStringParam(FString FunctionName, FString Param) {
-	FString Ret;
-	PyObject* Args = Py_BuildValue("(s)", TCHAR_TO_UTF8(*Param));
-	PyObject* Result = CallFunction(FunctionName, Args);
-	SAFE_DELETE_PYOBJECT(Args);
-	if (Result) {
-		Ret = PyObjectToString(Result);
-		SAFE_DELETE_PYOBJECT(Result);
+	if (Py_IsInitialized()) {
+		PyRun_SimpleString(TCHAR_TO_UTF8(*Str));
 	}
-	return Ret;
 }
 
-FString UPythonVMSystem::CallStringFunction(FString FunctionName) {
-	FString Ret;
-	PyObject* Result = CallFunction(FunctionName);
-	if (Result) {
-		Ret = PyObjectToString(Result);
-		SAFE_DELETE_PYOBJECT(Result);
-	}
-	return Ret;
-}
-
-
-PyObject* UPythonVMSystem::GetOrLoadModule(FString ModuleName) {
-	if (ImportPythonModuleImpl(ModuleName)) {
-		return Modules.FindRef(ModuleName).Module;
-	}
-	return nullptr;
-}
-
-PyObject* UPythonVMSystem::GetOrLoadFunction(FString FunctionName) {
-	FString Left, Right;
-	if (SplitFunctionName(FunctionName, Left, Right)) {
-		if (ImportPythonModuleImpl(Left)) {
-			FPyModule* ModulePtr = Modules.Find(Left);
-			if (ModulePtr) {
-				PyObject** FuncPtr = ModulePtr->Functions.Find(Right);
-				if (FuncPtr) {
-					return *FuncPtr;
-				}
-				else {
-					PyObject* Func = PyObject_GetAttrString(ModulePtr->Module, TCHAR_TO_UTF8(*Right));
-					if (Func) {
-						ModulePtr->Functions.Add(Right, Func);
-						return Func;
-					}
-				}
+FString UPythonVMSystem::SimpleCallFunction(FString ModuleName, FString FunctionName, FString Param) {
+	UPyObject* Module = GetOrImportPyModule(ModuleName);
+	if (Module) {
+		UPyObject Args;
+		Param.IsEmpty() ? Args.Set(Py_BuildValue("")) : Args.Set(Py_BuildValue("(s)", TCHAR_TO_UTF8(*Param)));
+		UPyObject FunctionObject(PyObject_GetAttrString(Module->Get(), TCHAR_TO_UTF8(*(FunctionName))));
+		if (FunctionObject.IsValid()) {
+			UPyObject ResultObject(PyObject_Call(FunctionObject.Get(), Args.Get(), nullptr));
+			if (ResultObject.IsValid()) {
+				return FString(PyObjectToString(ResultObject.Get()));
 			}
 		}
 	}
-	return nullptr;
+	return FString();
 }
 
-PyObject* UPythonVMSystem::CallFunction(FString FunctionName, PyObject* Args, PyObject* Kwargs) {
-	PyObject* FuncPtr = GetOrLoadFunction(FunctionName);
-	if (FuncPtr) {
-		if (Args == nullptr) Args = mPyArgs;
-		PyObject* Result = PyObject_Call(FuncPtr, Args, Kwargs);
-		PrintPythonLog();
-		return Result;
+void UPythonVMSystem::SimpleCallFunctionAsync(FString ModuleName, FString FunctionName, FString Param) {
+	UPyObject* Module = GetOrImportPyModule(ModuleName);
+	if (Module) {
+		PyObject* PyModulePtr = Module->Get();
+		AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [PyModulePtr, FunctionName, Param]() {
+			if (PyModulePtr) {
+				UPyObject Args;
+				Param.IsEmpty() ? Args.Set(Py_BuildValue("")) : Args.Set(Py_BuildValue("(s)", TCHAR_TO_UTF8(*Param)));
+				UPyObject FunctionObject = PyObject_GetAttrString(PyModulePtr, TCHAR_TO_UTF8(*(FunctionName)));
+				if (FunctionObject.IsValid()) {
+					PyObject_Call(FunctionObject.Get(), Args.Get(), nullptr);
+				}
+			}
+			});
 	}
-	return nullptr;
-}
-
-const PyObject* UPythonVMSystem::GetEmptyArgs() {
-	return mPyArgs;
 }
 
 FString UPythonVMSystem::PyObjectToString(PyObject* Object) {
@@ -173,45 +97,34 @@ FString UPythonVMSystem::PyObjectToString(PyObject* Object) {
 	return Ret;
 }
 
-void UPythonVMSystem::PrintPythonLog() {
-	PyObject* GetLogPtr = GetOrLoadFunction("log_catch::getLog");
-	PyObject* ClearLogPtr = GetOrLoadFunction("log_catch::clearLog");
-	if (GetLogPtr && ClearLogPtr) {
-		PyObject* Result = PyObject_Call(GetLogPtr, mPyArgs, nullptr);
-		if (Result) {
-			FString LogStr = PyObjectToString(Result);
-			if (!LogStr.IsEmpty()) {
-				UE_LOG(LogPythonVM, Display, TEXT("PythonLevel:\n%s"), *LogStr);
-				//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, LogStr);
-				PyObject_Call(ClearLogPtr, mPyArgs, nullptr);
+UPyObject* UPythonVMSystem::GetOrImportPyModule(FString ModuleName)
+{
+	UPyObject** FindModule = Modules.Find(ModuleName);
+	if (FindModule) {
+		return *FindModule;
+	}
+	else {
+		if (ImportPythonModule(ModuleName)) {
+			FindModule = Modules.Find(ModuleName);
+			if (FindModule) {
+				return *FindModule;
 			}
-			SAFE_DELETE_PYOBJECT(Result);
 		}
 	}
+	return nullptr;
 }
 
-bool UPythonVMSystem::SplitFunctionName(FString In, FString& OutModuleName, FString& OutFunctionName) {
-	if (!In.Contains("::")) {
-		UE_LOG(LogPythonVM, Error, TEXT("Wrong FunctionName. eg: ModuleName::FunctionName"));
-		return false;
-	}
-	return In.Split("::", &OutModuleName, &OutFunctionName);
-}
-
-bool UPythonVMSystem::ImportPythonModuleImpl(FString ModuleName) {
+bool UPythonVMSystem::ImportPythonModule(FString ModuleName) {
 	if (!Modules.Contains(ModuleName)) {
-		PyObject* mPyModule = PyImport_ImportModule(TCHAR_TO_UTF8(*ModuleName));
-		if (mPyModule) {
-			FPyModule NewModule;
-			NewModule.Module = mPyModule;
-			UE_LOG(LogPythonVM, Display, TEXT("Import python module: %s"),*ModuleName);
-			//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, "Import python module:" + ModuleName);
-			Modules.Add(ModuleName, NewModule);
+		PyObject* NewPyModule = PyImport_ImportModule(TCHAR_TO_UTF8(*ModuleName));
+		if (NewPyModule) {
+			UE_LOG(LogPythonVM, Display, TEXT("Import python module: %s"), *ModuleName);
+			Modules.Add(ModuleName, new UPyObject(NewPyModule));
 			return true;
 		}
 		UE_LOG(LogPythonVM, Error, TEXT("Import python module failed: %s"), *ModuleName);
-		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, "Import python module failed:" + ModuleName);
 		return false;
 	}
 	return true;
 }
+
