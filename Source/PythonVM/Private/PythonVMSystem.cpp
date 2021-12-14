@@ -27,7 +27,8 @@ void UPythonVMSystem::InitializePython() {
 		FString ExecScript = "import sys";
 		ExecScript.Append(LINE_TERMINATOR);
 		ExecScript.Append("sys.path.append('");
-		ExecScript.Append(AbsPluginDir / "Source/Scripts");
+		ExecScript.Append(AbsPluginDir / "Source/ThirdParty/Scripts");
+		//ExecScript.Append(AbsPluginDir / "Binaries/Scripts");
 		ExecScript.Append("')");
 		PyRun_SimpleString(TCHAR_TO_UTF8(*ExecScript));
 		PyRun_SimpleString("import log_catch");
@@ -39,10 +40,13 @@ void UPythonVMSystem::InitializePython() {
 void UPythonVMSystem::FinalizePython() {
 #if !WITH_EDITOR
 	if (Py_IsInitialized()) {
-		SAFE_DELETE_PYOBJECT(gPyEmptyArgs);
 		Py_Finalize();
 	}
 #endif
+}
+
+bool UPythonVMSystem::IsInitialized() {
+	return (bool)Py_IsInitialized();
 }
 
 void UPythonVMSystem::RunPythonString(const FString& Str) {

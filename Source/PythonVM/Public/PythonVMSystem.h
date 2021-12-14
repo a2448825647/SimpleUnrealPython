@@ -52,13 +52,16 @@ public:
 		void FinalizePython();
 
 	UFUNCTION(BlueprintCallable, Category = "PythonVM")
+		bool IsInitialized();
+
+	UFUNCTION(BlueprintCallable, Category = "PythonVM")
 		void RunPythonString(const FString& Str);
 
 	UFUNCTION(BlueprintCallable, Category = "PythonVM")
-		FString SimpleCallFunction(FString ModuleName, FString FunctionName, FString Param);
+		FString SimpleCallFunction(FString ModuleName, FString FunctionName, FString Param = "");
 
 	UFUNCTION(BlueprintCallable, Category = "PythonVM")
-		void SimpleCallFunctionAsync(FString ModuleName, FString FunctionName, FString Param);
+		void SimpleCallFunctionAsync(FString ModuleName, FString FunctionName, FString Param = "");
 
 	FString PyObjectToString(PyObject* Object);
 private:
